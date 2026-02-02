@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eisenhower Matrix</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #fefdfb;
+            --text: #0a171c;
+            --text-muted: #6b7280;
+            --card-bg: #ffffff;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --card-radius: 12px;
+            --border-light: #f3f4f6;
+
+            --do-color: #dc2626;
+            --do-bg: #fef2f2;
+            --schedule-color: #2563eb;
+            --schedule-bg: #eff6ff;
+            --delegate-color: #d97706;
+            --delegate-bg: #fffbeb;
+            --delete-color: #6b7280;
+            --delete-bg: #f9fafb;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0 16px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 40px 0 24px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header h1 {
+            font-weight: 900;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        /* Axis Labels */
+        .matrix-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding-bottom: 48px;
+        }
+
+        .axis-top {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 8px;
+            padding: 0 4px;
+        }
+
+        .axis-top span {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .matrix-body {
+            display: flex;
+            gap: 8px;
+        }
+
+        .axis-left {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 0 4px;
+            flex-shrink: 0;
+        }
+
+        .axis-left span {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            writing-mode: vertical-lr;
+            transform: rotate(180deg);
+            text-align: center;
+        }
+
+        /* Matrix Grid */
+        .matrix {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            flex: 1;
+        }
+
+        /* Quadrant Cards */
+        .quadrant {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            border-top: 3px solid transparent;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .quadrant[data-quadrant="do"]       { border-top-color: var(--do-color); }
+        .quadrant[data-quadrant="schedule"]  { border-top-color: var(--schedule-color); }
+        .quadrant[data-quadrant="delegate"]  { border-top-color: var(--delegate-color); }
+        .quadrant[data-quadrant="delete"]    { border-top-color: var(--delete-color); }
+
+        .quadrant.drag-over {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+
+        .quadrant.move-target {
+            outline: 2px dashed var(--text-muted);
+            outline-offset: -2px;
+            cursor: pointer;
+        }
+
+        /* Quadrant Header */
+        .quadrant-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .quadrant-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .quadrant[data-quadrant="do"] .quadrant-badge       { background: var(--do-color); }
+        .quadrant[data-quadrant="schedule"] .quadrant-badge  { background: var(--schedule-color); }
+        .quadrant[data-quadrant="delegate"] .quadrant-badge  { background: var(--delegate-color); }
+        .quadrant[data-quadrant="delete"] .quadrant-badge    { background: var(--delete-color); }
+
+        .quadrant-header h2 {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.01em;
+        }
+
+        /* Task List */
+        .task-list {
+            list-style: none;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        .task-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .task-list::-webkit-scrollbar-thumb {
+            background: #e5e7eb;
+            border-radius: 4px;
+        }
+
+        .task-empty {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            text-align: center;
+            padding: 24px 0;
+            opacity: 0.6;
+        }
+
+        /* Task Item */
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            margin: 3px 0;
+            border-radius: 8px;
+            cursor: grab;
+            transition: background 0.15s, opacity 0.2s, transform 0.15s;
+            animation: slideIn 0.2s ease;
+        }
+
+        .task-item:hover {
+            background: var(--border-light);
+        }
+
+        .task-item.dragging {
+            opacity: 0.4;
+            transform: scale(0.97);
+        }
+
+        .task-text {
+            flex: 1;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            opacity: 0.45;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+
+        .task-actions button {
+            width: 26px;
+            height: 26px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .task-actions button:hover {
+            background: #e5e7eb;
+            color: var(--text);
+        }
+
+        .btn-move {
+            display: none;
+        }
+
+        /* Add Task Form */
+        .add-task-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .add-task-form input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.84rem;
+            outline: none;
+            background: var(--bg);
+            color: var(--text);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .add-task-form input:focus {
+            border-color: #d1d5db;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.04);
+        }
+
+        .add-task-form button {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: none;
+            background: var(--text);
+            color: white;
+            font-size: 1.15rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+
+        .add-task-form button:hover {
+            opacity: 0.85;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .task-item.removing {
+            opacity: 0;
+            transform: translateX(8px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        /* Detail indicator dot */
+        .task-detail-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            opacity: 0.4;
+            flex-shrink: 0;
+        }
+
+        .task-text {
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            animation: fadeIn 0.15s ease;
+        }
+
+        .modal-backdrop.hidden {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            width: 100%;
+            max-width: 560px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 28px;
+            animation: modalSlideIn 0.2s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .modal::-webkit-scrollbar-thumb {
+            background: #e5e7eb;
+            border-radius: 4px;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            transition: background 0.15s;
+        }
+
+        .modal-close:hover {
+            background: var(--border-light);
+        }
+
+        .modal-title {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text);
+            background: transparent;
+            padding: 6px 0;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.15s;
+            margin-bottom: 20px;
+        }
+
+        .modal-title:focus {
+            border-bottom-color: #e5e7eb;
+        }
+
+        .modal-section-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .modal-description {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-family: inherit;
+            font-size: 0.88rem;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            resize: none;
+            outline: none;
+            min-height: 72px;
+            margin-bottom: 24px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .modal-description:focus {
+            border-color: #d1d5db;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.04);
+        }
+
+        .modal-comments-list {
+            list-style: none;
+            margin-bottom: 12px;
+        }
+
+        .modal-comment {
+            padding: 10px 12px;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+
+        .modal-comment-text {
+            font-size: 0.86rem;
+            line-height: 1.5;
+            color: var(--text);
+            word-break: break-word;
+        }
+
+        .modal-comment-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
+
+        .modal-comment-time {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .modal-comment-delete {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.15s, color 0.15s;
+        }
+
+        .modal-comment:hover .modal-comment-delete {
+            opacity: 1;
+        }
+
+        .modal-comment-delete:hover {
+            color: var(--do-color);
+        }
+
+        .modal-comment-form {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-comment-form input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.84rem;
+            outline: none;
+            background: var(--bg);
+            color: var(--text);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .modal-comment-form input:focus {
+            border-color: #d1d5db;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.04);
+        }
+
+        .modal-comment-form button {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            background: var(--text);
+            color: white;
+            font-family: inherit;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+
+        .modal-comment-form button:hover {
+            opacity: 0.85;
+        }
+
+        .modal-divider {
+            border: none;
+            border-top: 1px solid var(--border-light);
+            margin: 20px 0;
+        }
+
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .modal-btn {
+            padding: 7px 14px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: var(--card-bg);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .modal-btn:hover {
+            background: var(--border-light);
+        }
+
+        .modal-btn-danger {
+            color: var(--do-color);
+            border-color: transparent;
+        }
+
+        .modal-btn-danger:hover {
+            background: var(--do-bg);
+        }
+
+        .modal-footer-spacer {
+            flex: 1;
+        }
+
+        .modal-empty-comments {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            opacity: 0.6;
+            padding: 8px 0;
+            margin-bottom: 12px;
+        }
+
+        /* Mobile */
+        @media (max-width: 640px) {
+            header {
+                padding: 28px 0 18px;
+            }
+
+            header h1 {
+                font-size: 1.4rem;
+            }
+
+            .axis-top, .axis-left {
+                display: none;
+            }
+
+            .matrix-body {
+                flex-direction: column;
+            }
+
+            .matrix {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .quadrant {
+                min-height: 160px;
+            }
+
+            .task-list {
+                max-height: none;
+            }
+
+            .task-actions {
+                opacity: 1;
+            }
+
+            .btn-move {
+                display: inline-flex;
+            }
+
+            .modal {
+                padding: 20px;
+                max-height: 90vh;
+            }
+
+            .modal-comment-delete {
+                opacity: 1;
+            }
+        }
+
+        /* Touch device: always show actions */
+        @media (hover: none) {
+            .task-actions {
+                opacity: 1;
+            }
+
+            .btn-move {
+                display: inline-flex;
+            }
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 8px 0 32px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Eisenhower Matrix</h1>
+        <p>Prioritize by urgency and importance</p>
+    </header>
+
+    <div class="matrix-wrapper">
+        <div class="axis-top">
+            <span>Urgent</span>
+            <span>Not Urgent</span>
+        </div>
+        <div class="matrix-body">
+            <div class="axis-left">
+                <span>Important</span>
+                <span>Not Important</span>
+            </div>
+            <main class="matrix">
+                <section class="quadrant" data-quadrant="do">
+                    <div class="quadrant-header">
+                        <span class="quadrant-badge">Do</span>
+                        <h2>Important &amp; Urgent</h2>
+                    </div>
+                    <ul class="task-list"></ul>
+                    <form class="add-task-form">
+                        <input type="text" placeholder="Add a task..." aria-label="Add task to Do quadrant">
+                        <button type="submit" aria-label="Add task">+</button>
+                    </form>
+                </section>
+
+                <section class="quadrant" data-quadrant="schedule">
+                    <div class="quadrant-header">
+                        <span class="quadrant-badge">Schedule</span>
+                        <h2>Important &amp; Not Urgent</h2>
+                    </div>
+                    <ul class="task-list"></ul>
+                    <form class="add-task-form">
+                        <input type="text" placeholder="Add a task..." aria-label="Add task to Schedule quadrant">
+                        <button type="submit" aria-label="Add task">+</button>
+                    </form>
+                </section>
+
+                <section class="quadrant" data-quadrant="delegate">
+                    <div class="quadrant-header">
+                        <span class="quadrant-badge">Delegate</span>
+                        <h2>Not Important &amp; Urgent</h2>
+                    </div>
+                    <ul class="task-list"></ul>
+                    <form class="add-task-form">
+                        <input type="text" placeholder="Add a task..." aria-label="Add task to Delegate quadrant">
+                        <button type="submit" aria-label="Add task">+</button>
+                    </form>
+                </section>
+
+                <section class="quadrant" data-quadrant="delete">
+                    <div class="quadrant-header">
+                        <span class="quadrant-badge">Delete</span>
+                        <h2>Not Important &amp; Not Urgent</h2>
+                    </div>
+                    <ul class="task-list"></ul>
+                    <form class="add-task-form">
+                        <input type="text" placeholder="Add a task..." aria-label="Add task to Delete quadrant">
+                        <button type="submit" aria-label="Add task">+</button>
+                    </form>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="modal-backdrop"></div>
+
+    <footer>Eisenhower Matrix &middot; Tasks stored locally</footer>
+
+    <script>
+        const STATE_KEY = 'eisenhower-matrix';
+        const QUADRANTS = ['do', 'schedule', 'delegate', 'delete'];
+
+        let state = {
+            version: 1,
+            tasks: { do: [], schedule: [], delegate: [], delete: [] }
+        };
+
+        // --- State Management ---
+
+        function generateId() {
+            if (crypto.randomUUID) return crypto.randomUUID();
+            return Date.now().toString(36) + Math.random().toString(36).slice(2);
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STATE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.version === 1 && parsed.tasks) {
+                        for (const q of QUADRANTS) {
+                            if (!Array.isArray(parsed.tasks[q])) parsed.tasks[q] = [];
+                            // Migrate: add description and comments to old tasks
+                            for (const task of parsed.tasks[q]) {
+                                if (task.description === undefined) task.description = '';
+                                if (!Array.isArray(task.comments)) task.comments = [];
+                            }
+                        }
+                        state = parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to load state:', e);
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STATE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.warn('Failed to save state:', e);
+            }
+        }
+
+        // --- Render ---
+
+        function render() {
+            for (const q of QUADRANTS) {
+                const section = document.querySelector(`.quadrant[data-quadrant="${q}"]`);
+                const list = section.querySelector('.task-list');
+                list.innerHTML = '';
+
+                const tasks = state.tasks[q];
+
+                if (tasks.length === 0) {
+                    const empty = document.createElement('li');
+                    empty.className = 'task-empty';
+                    empty.textContent = 'No tasks yet';
+                    list.appendChild(empty);
+                    continue;
+                }
+
+                for (const task of tasks) {
+                    const li = document.createElement('li');
+                    li.className = 'task-item' + (task.completed ? ' completed' : '');
+                    li.draggable = true;
+                    li.dataset.id = task.id;
+
+                    const hasDetail = task.description || (task.comments && task.comments.length > 0);
+
+                    li.innerHTML = `
+                        ${hasDetail ? '<span class="task-detail-dot" title="Has details"></span>' : ''}
+                        <span class="task-text">${escapeHtml(task.text)}</span>
+                        <div class="task-actions">
+                            <button class="btn-complete" title="${task.completed ? 'Undo' : 'Complete'}" aria-label="${task.completed ? 'Undo complete' : 'Complete task'}">
+                                ${task.completed ? '↩' : '&#10003;'}
+                            </button>
+                            <button class="btn-move" title="Move" aria-label="Move task to another quadrant">&#8596;</button>
+                            <button class="btn-delete" title="Delete" aria-label="Delete task">&times;</button>
+                        </div>
+                    `;
+
+                    list.appendChild(li);
+                }
+            }
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // --- Task Operations ---
+
+        function addTask(quadrant, text) {
+            state.tasks[quadrant].push({
+                id: generateId(),
+                text: text,
+                description: '',
+                comments: [],
+                completed: false,
+                createdAt: Date.now()
+            });
+            saveState();
+            render();
+        }
+
+        function deleteTask(quadrant, taskId) {
+            state.tasks[quadrant] = state.tasks[quadrant].filter(t => t.id !== taskId);
+            saveState();
+            render();
+        }
+
+        function toggleComplete(quadrant, taskId) {
+            const task = state.tasks[quadrant].find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                saveState();
+                render();
+            }
+        }
+
+        function moveTask(fromQuadrant, toQuadrant, taskId) {
+            const idx = state.tasks[fromQuadrant].findIndex(t => t.id === taskId);
+            if (idx === -1) return;
+            const [task] = state.tasks[fromQuadrant].splice(idx, 1);
+            state.tasks[toQuadrant].push(task);
+            saveState();
+            render();
+        }
+
+        // --- Event Handlers ---
+
+        function setupFormListeners() {
+            document.querySelectorAll('.add-task-form').forEach(form => {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const input = form.querySelector('input');
+                    const quadrant = form.closest('.quadrant').dataset.quadrant;
+                    const text = input.value.trim();
+                    if (text) {
+                        addTask(quadrant, text);
+                        input.value = '';
+                        input.focus();
+                    }
+                });
+            });
+        }
+
+        function setupTaskActions() {
+            document.querySelector('.matrix').addEventListener('click', (e) => {
+                // Open modal when clicking task text or detail dot
+                const taskText = e.target.closest('.task-text, .task-detail-dot');
+                if (taskText) {
+                    const taskItem = taskText.closest('.task-item');
+                    if (taskItem) {
+                        const quadrant = taskItem.closest('.quadrant').dataset.quadrant;
+                        openModal(quadrant, taskItem.dataset.id);
+                        return;
+                    }
+                }
+
+                const btn = e.target.closest('.btn-complete, .btn-delete, .btn-move');
+                if (!btn) return;
+
+                const taskItem = btn.closest('.task-item');
+                if (!taskItem) return;
+
+                const quadrant = btn.closest('.quadrant').dataset.quadrant;
+                const taskId = taskItem.dataset.id;
+
+                if (btn.classList.contains('btn-complete')) {
+                    toggleComplete(quadrant, taskId);
+                } else if (btn.classList.contains('btn-delete')) {
+                    taskItem.classList.add('removing');
+                    setTimeout(() => deleteTask(quadrant, taskId), 200);
+                } else if (btn.classList.contains('btn-move')) {
+                    enterMoveMode(taskId, quadrant);
+                }
+            });
+        }
+
+        // --- Modal ---
+
+        const QUADRANT_LABELS = {
+            do: 'Do',
+            schedule: 'Schedule',
+            delegate: 'Delegate',
+            delete: 'Delete'
+        };
+
+        let currentModal = { quadrant: null, taskId: null };
+
+        function findTask(taskId) {
+            for (const q of QUADRANTS) {
+                const task = state.tasks[q].find(t => t.id === taskId);
+                if (task) return { task, quadrant: q };
+            }
+            return null;
+        }
+
+        function timeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            if (days < 30) return `${days}d ago`;
+            return new Date(timestamp).toLocaleDateString();
+        }
+
+        function openModal(quadrant, taskId) {
+            const found = findTask(taskId);
+            if (!found) return;
+
+            const { task } = found;
+            currentModal = { quadrant, taskId };
+
+            const backdrop = document.getElementById('modal-backdrop');
+            backdrop.innerHTML = `
+                <div class="modal" role="dialog" aria-modal="true">
+                    <div class="modal-header">
+                        <span class="quadrant-badge" style="background: var(--${quadrant}-color)">${escapeHtml(QUADRANT_LABELS[quadrant])}</span>
+                        <button class="modal-close" aria-label="Close">&times;</button>
+                    </div>
+                    <input class="modal-title" type="text" value="${escapeAttr(task.text)}" aria-label="Task title">
+                    <div class="modal-section-label">Description</div>
+                    <textarea class="modal-description" placeholder="Add a description..." aria-label="Task description">${escapeHtml(task.description)}</textarea>
+                    <div class="modal-section-label">Comments</div>
+                    <ul class="modal-comments-list">
+                        ${task.comments.length === 0 ? '<li class="modal-empty-comments">No comments yet</li>' : ''}
+                        ${task.comments.map(c => `
+                            <li class="modal-comment" data-comment-id="${c.id}">
+                                <div class="modal-comment-text">${escapeHtml(c.text)}</div>
+                                <div class="modal-comment-meta">
+                                    <span class="modal-comment-time">${timeAgo(c.createdAt)}</span>
+                                    <button class="modal-comment-delete" aria-label="Delete comment">&times;</button>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                    <form class="modal-comment-form">
+                        <input type="text" placeholder="Add a comment..." aria-label="Add comment">
+                        <button type="submit">Add</button>
+                    </form>
+                    <div class="modal-footer">
+                        <button class="modal-btn modal-btn-complete">${task.completed ? '↩ Undo Complete' : '&#10003; Complete'}</button>
+                        <span class="modal-footer-spacer"></span>
+                        <button class="modal-btn modal-btn-danger modal-btn-delete">&times; Delete</button>
+                    </div>
+                </div>
+            `;
+
+            backdrop.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            // Auto-grow description textarea
+            const textarea = backdrop.querySelector('.modal-description');
+            autoGrow(textarea);
+
+            setupModalEvents(backdrop);
+        }
+
+        function autoGrow(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.max(72, textarea.scrollHeight) + 'px';
+        }
+
+        function closeModal() {
+            // Save any pending edits before closing
+            saveModalEdits();
+
+            const backdrop = document.getElementById('modal-backdrop');
+            if (backdrop._escHandler) {
+                document.removeEventListener('keydown', backdrop._escHandler);
+                backdrop._escHandler = null;
+            }
+            backdrop.classList.add('hidden');
+            backdrop.innerHTML = '';
+            document.body.style.overflow = '';
+            currentModal = { quadrant: null, taskId: null };
+            render();
+        }
+
+        function saveModalEdits() {
+            if (!currentModal.taskId) return;
+            const found = findTask(currentModal.taskId);
+            if (!found) return;
+
+            const backdrop = document.getElementById('modal-backdrop');
+            const titleInput = backdrop.querySelector('.modal-title');
+            const descTextarea = backdrop.querySelector('.modal-description');
+
+            if (titleInput) {
+                const newTitle = titleInput.value.trim();
+                if (newTitle && newTitle !== found.task.text) {
+                    found.task.text = newTitle;
+                }
+            }
+
+            if (descTextarea) {
+                found.task.description = descTextarea.value;
+            }
+
+            saveState();
+        }
+
+        function addComment(quadrant, taskId, text) {
+            const found = findTask(taskId);
+            if (!found) return;
+            found.task.comments.push({
+                id: generateId(),
+                text: text,
+                createdAt: Date.now()
+            });
+            saveState();
+            // Re-open modal to reflect new comment
+            openModal(quadrant, taskId);
+        }
+
+        function deleteComment(quadrant, taskId, commentId) {
+            const found = findTask(taskId);
+            if (!found) return;
+            found.task.comments = found.task.comments.filter(c => c.id !== commentId);
+            saveState();
+            openModal(quadrant, taskId);
+        }
+
+        function setupModalEvents(backdrop) {
+            // Close on backdrop click
+            backdrop.addEventListener('click', (e) => {
+                if (e.target === backdrop) closeModal();
+            });
+
+            // Close button
+            const closeBtn = backdrop.querySelector('.modal-close');
+            closeBtn.addEventListener('click', closeModal);
+
+            // Title: save on blur and Enter
+            const titleInput = backdrop.querySelector('.modal-title');
+            titleInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    titleInput.blur();
+                }
+            });
+
+            // Description: auto-grow on input
+            const textarea = backdrop.querySelector('.modal-description');
+            textarea.addEventListener('input', () => autoGrow(textarea));
+
+            // Comment form
+            const commentForm = backdrop.querySelector('.modal-comment-form');
+            commentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = commentForm.querySelector('input');
+                const text = input.value.trim();
+                if (text) {
+                    saveModalEdits(); // Save title/description first
+                    addComment(currentModal.quadrant, currentModal.taskId, text);
+                }
+            });
+
+            // Delete comment buttons
+            backdrop.addEventListener('click', (e) => {
+                const btn = e.target.closest('.modal-comment-delete');
+                if (!btn) return;
+                const commentLi = btn.closest('.modal-comment');
+                const commentId = commentLi.dataset.commentId;
+                saveModalEdits();
+                deleteComment(currentModal.quadrant, currentModal.taskId, commentId);
+            });
+
+            // Complete button
+            const completeBtn = backdrop.querySelector('.modal-btn-complete');
+            completeBtn.addEventListener('click', () => {
+                saveModalEdits();
+                toggleComplete(currentModal.quadrant, currentModal.taskId);
+                openModal(currentModal.quadrant, currentModal.taskId);
+            });
+
+            // Delete button
+            const deleteBtn = backdrop.querySelector('.modal-btn-delete');
+            deleteBtn.addEventListener('click', () => {
+                const q = currentModal.quadrant;
+                const id = currentModal.taskId;
+                // Clean up modal first
+                if (backdrop._escHandler) {
+                    document.removeEventListener('keydown', backdrop._escHandler);
+                    backdrop._escHandler = null;
+                }
+                backdrop.classList.add('hidden');
+                backdrop.innerHTML = '';
+                document.body.style.overflow = '';
+                currentModal = { quadrant: null, taskId: null };
+                deleteTask(q, id);
+            });
+
+            // Escape key
+            backdrop._escHandler = (e) => {
+                if (e.key === 'Escape') closeModal();
+            };
+            document.addEventListener('keydown', backdrop._escHandler);
+        }
+
+        // --- Drag and Drop (Desktop) ---
+
+        function setupDragDrop() {
+            const matrix = document.querySelector('.matrix');
+
+            matrix.addEventListener('dragstart', (e) => {
+                const taskItem = e.target.closest('.task-item');
+                if (!taskItem) return;
+
+                const quadrant = taskItem.closest('.quadrant').dataset.quadrant;
+                e.dataTransfer.setData('text/taskId', taskItem.dataset.id);
+                e.dataTransfer.setData('text/fromQuadrant', quadrant);
+                e.dataTransfer.effectAllowed = 'move';
+
+                requestAnimationFrame(() => taskItem.classList.add('dragging'));
+            });
+
+            matrix.addEventListener('dragend', (e) => {
+                const taskItem = e.target.closest('.task-item');
+                if (taskItem) taskItem.classList.remove('dragging');
+            });
+
+            document.querySelectorAll('.quadrant').forEach(quadrant => {
+                quadrant.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    quadrant.classList.add('drag-over');
+                });
+
+                quadrant.addEventListener('dragleave', (e) => {
+                    if (!quadrant.contains(e.relatedTarget)) {
+                        quadrant.classList.remove('drag-over');
+                    }
+                });
+
+                quadrant.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    quadrant.classList.remove('drag-over');
+
+                    const taskId = e.dataTransfer.getData('text/taskId');
+                    const fromQuadrant = e.dataTransfer.getData('text/fromQuadrant');
+                    const toQuadrant = quadrant.dataset.quadrant;
+
+                    if (fromQuadrant && toQuadrant && fromQuadrant !== toQuadrant) {
+                        moveTask(fromQuadrant, toQuadrant, taskId);
+                    }
+                });
+            });
+        }
+
+        // --- Mobile Move Mode ---
+
+        let moveMode = { active: false, taskId: null, fromQuadrant: null };
+
+        function enterMoveMode(taskId, fromQuadrant) {
+            // If already in move mode, exit first
+            if (moveMode.active) exitMoveMode();
+
+            moveMode = { active: true, taskId, fromQuadrant };
+
+            document.querySelectorAll('.quadrant').forEach(q => {
+                if (q.dataset.quadrant !== fromQuadrant) {
+                    q.classList.add('move-target');
+                }
+            });
+
+            // Click handler for targets
+            document.addEventListener('click', moveModeClickHandler, true);
+        }
+
+        function exitMoveMode() {
+            moveMode = { active: false, taskId: null, fromQuadrant: null };
+            document.querySelectorAll('.quadrant').forEach(q => {
+                q.classList.remove('move-target');
+            });
+            document.removeEventListener('click', moveModeClickHandler, true);
+        }
+
+        function moveModeClickHandler(e) {
+            if (!moveMode.active) return;
+
+            const targetQuadrant = e.target.closest('.quadrant');
+
+            // If clicking a move-target quadrant, move the task
+            if (targetQuadrant && targetQuadrant.classList.contains('move-target')) {
+                e.preventDefault();
+                e.stopPropagation();
+                moveTask(moveMode.fromQuadrant, targetQuadrant.dataset.quadrant, moveMode.taskId);
+                exitMoveMode();
+                return;
+            }
+
+            // If clicking a btn-move on a different task, switch to that task
+            const btn = e.target.closest('.btn-move');
+            if (btn) return; // Let the normal click handler deal with it
+
+            // Otherwise, cancel move mode
+            exitMoveMode();
+        }
+
+        // --- Init ---
+
+        function init() {
+            loadState();
+            render();
+            setupFormListeners();
+            setupTaskActions();
+            setupDragDrop();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
